@@ -1,0 +1,105 @@
+/* =====================================================================
+   RubenceCine — styles.css  (v0.1)
+   Tema oscuro "sala de cine": fondo casi negro azulado + acento ámbar
+   (el haz del proyector). Wordmark en Unbounded; resto en Sora.
+   ===================================================================== */
+:root{
+  --bg:#0E0F1A; --bg-2:#141627; --surface:#1A1D31; --surface-2:#23274A;
+  --border:#2C3052; --text:#F2EEE6; --muted:#8A8DA3;
+  --accent:#F5B14C; --accent-2:#FFD089; --danger:#F0686B;
+  --r:18px; --r-sm:12px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100dvh}
+body{
+  background:radial-gradient(1200px 600px at 50% -10%, #1a1d33 0%, var(--bg) 55%);
+  color:var(--text);
+  font-family:'Sora',system-ui,-apple-system,sans-serif;
+  -webkit-font-smoothing:antialiased;
+  padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+
+/* ---- Selector de perfiles -------------------------------------------- */
+.picker{min-height:100dvh;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;padding:32px 20px;text-align:center}
+.marca{position:relative;margin-bottom:6px}
+.marca .glow{position:absolute;left:50%;top:50%;width:260px;height:140px;
+  transform:translate(-50%,-50%);
+  background:radial-gradient(closest-side,rgba(245,177,76,.35),transparent 70%);
+  filter:blur(8px);pointer-events:none}
+.marca h1{position:relative;font-family:'Unbounded',sans-serif;font-weight:700;
+  font-size:clamp(1.9rem,7vw,2.6rem);letter-spacing:.5px;
+  background:linear-gradient(180deg,var(--accent-2),var(--accent));
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+.pregunta{color:var(--muted);font-size:1.05rem;margin:18px 0 26px}
+.rejilla{display:grid;grid-template-columns:repeat(3,1fr);gap:18px 14px;
+  width:100%;max-width:420px}
+@media(max-width:360px){.rejilla{grid-template-columns:repeat(2,1fr)}}
+.perfil{display:flex;flex-direction:column;align-items:center;gap:10px;padding:6px}
+.avatar{width:74px;height:74px;border-radius:20px;display:grid;place-items:center;
+  font-family:'Unbounded',sans-serif;font-weight:600;font-size:1.5rem;color:#0E0F1A;
+  background:var(--c,#888);box-shadow:0 8px 22px -8px var(--c);
+  transition:transform .15s ease}
+.perfil:active .avatar{transform:scale(.94)}
+.perfil:hover .avatar{transform:translateY(-3px)}
+.avatar.mas{background:transparent;border:2px dashed var(--border);color:var(--muted);
+  box-shadow:none;font-size:2rem;font-family:'Sora',sans-serif}
+.perfil-nombre{font-size:.92rem;color:var(--text);font-weight:500}
+.lock{font-size:.72rem}
+.nuevo .perfil-nombre{color:var(--muted)}
+
+/* ---- Home (placeholder de momento) ----------------------------------- */
+.home{min-height:100dvh;display:flex;flex-direction:column;padding:24px 20px}
+.home-top{display:flex;align-items:center;gap:14px;margin-bottom:30px}
+.avatar.sm{width:48px;height:48px;border-radius:14px;font-size:1.05rem}
+.hola{color:var(--muted);font-size:.82rem;line-height:1}
+.home-top h2{font-size:1.3rem;font-weight:600}
+.home-top .peque{margin-left:auto}
+.placeholder{flex:1;display:flex;flex-direction:column;justify-content:center;
+  align-items:center;text-align:center;gap:10px}
+.placeholder .tenue{color:var(--muted);font-size:.9rem;max-width:260px;line-height:1.5}
+
+/* ---- Modal ----------------------------------------------------------- */
+.overlay{position:fixed;inset:0;background:rgba(6,7,15,.7);backdrop-filter:blur(4px);
+  display:flex;align-items:flex-end;justify-content:center;z-index:50;animation:fade .2s ease}
+@media(min-width:520px){.overlay{align-items:center;padding:20px}}
+.modal{width:100%;max-width:440px;background:var(--surface);border:1px solid var(--border);
+  border-radius:22px 22px 0 0;padding:24px 22px 26px;animation:rise .25s ease}
+@media(min-width:520px){.modal{border-radius:22px}}
+.modal h2{font-size:1.25rem;font-weight:600;margin-bottom:6px}
+.campo-lbl{display:block;color:var(--muted);font-size:.8rem;margin:14px 0 7px}
+.input{background:var(--bg-2);border:1px solid var(--border);border-radius:var(--r-sm);
+  padding:13px 14px;font-size:1rem;color:var(--text);min-height:48px;outline:none;
+  word-break:break-word;-webkit-user-select:text;user-select:text}
+.input:focus{border-color:var(--accent)}
+.input:empty:before{content:attr(data-ph);color:var(--muted);opacity:.7}
+.input.pin{letter-spacing:.4em;text-align:center;font-size:1.4rem}
+.swatches{display:flex;flex-wrap:wrap;gap:10px}
+.swatch{width:34px;height:34px;border-radius:10px;background:var(--c);
+  outline:2px solid transparent;outline-offset:2px;transition:outline-color .15s}
+.swatch.sel{outline-color:var(--text)}
+.acciones{display:flex;gap:10px;margin-top:24px}
+.btn{flex:1;background:var(--accent);color:#0E0F1A;font-weight:600;font-size:1rem;
+  padding:14px;border-radius:var(--r-sm);transition:filter .15s}
+.btn:active{filter:brightness(.9)}
+.btn.ghost{background:transparent;border:1px solid var(--border);color:var(--text)}
+.btn.peque{flex:none;padding:8px 14px;font-size:.85rem}
+
+/* ---- Estados (carga / aviso de config) ------------------------------- */
+.cargando,.aviso{min-height:100dvh;display:grid;place-items:center;text-align:center;
+  padding:30px;color:var(--muted);line-height:1.7}
+.aviso b{color:var(--accent)}
+.pie{margin-top:auto;padding-top:24px;color:var(--muted);opacity:.5;font-size:.75rem}
+
+/* ---- Toast ----------------------------------------------------------- */
+#toast-root{position:fixed;left:0;right:0;bottom:24px;display:flex;flex-direction:column;
+  align-items:center;gap:8px;z-index:80;pointer-events:none}
+.toast{background:var(--surface-2);color:var(--text);border:1px solid var(--border);
+  padding:11px 18px;border-radius:999px;font-size:.9rem;opacity:0;transform:translateY(10px);
+  transition:opacity .25s,transform .25s}
+.toast.show{opacity:1;transform:translateY(0)}
+
+@keyframes fade{from{opacity:0}to{opacity:1}}
+@keyframes rise{from{transform:translateY(20px);opacity:.6}to{transform:translateY(0);opacity:1}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
