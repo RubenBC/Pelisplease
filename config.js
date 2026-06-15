@@ -3,7 +3,7 @@
    EDITA SOLO ESTE ARCHIVO con tus datos. El resto no hace falta tocarlo.
    ===================================================================== */
 const CONFIG = {
-  VERSION: 'v0.1',
+  VERSION: 'v0.2',
 
   // --- Supabase ---------------------------------------------------------
   // Project URL + publishable key (formato nuevo, segura para el frontend).
