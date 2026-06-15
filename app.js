@@ -1,5 +1,5 @@
 /* =====================================================================
-   RubenceCine — app.js  (v0.1)
+   RubenceCine — app.js  (v0.3)
    Paso 2: selector de perfiles tipo Netflix + conexión con Supabase.
    (Sin TMDB ni Gemini todavía.)
    ===================================================================== */
@@ -9,7 +9,9 @@
   const app = document.getElementById('app');
 
   // --- Comprobación de configuración ------------------------------------
-  if (!window.CONFIG || CONFIG.SUPABASE_URL.startsWith('PEGA_')) {
+  // OJO: 'CONFIG' se declara con const en config.js, así que NO está en
+  // window. Hay que comprobarlo con typeof, no con window.CONFIG.
+  if (typeof CONFIG === 'undefined' || CONFIG.SUPABASE_URL.startsWith('PEGA_')) {
     app.innerHTML =
       '<div class="aviso">Falta configurar Supabase.<br>' +
       'Abre <b>config.js</b> y pega tu <b>Project URL</b> y tu <b>anon key</b>.</div>';
