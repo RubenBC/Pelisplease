@@ -1,7 +1,7 @@
 /* =====================================================================
-   RubenceCine — app.js  (v0.9)
-   Recomendaciones: botones Guardar / No la he visto + estrellas abajo.
-   Pestañas: Descubrir · Mis pelis · Guardadas · Por ver.
+   RubenceCine — app.js  (v1.1)
+   Perfiles: avatares cinéfilos, editar perfil (nombre/avatar/color/PIN),
+   eliminar, y mensaje de bienvenida al crear.
    ===================================================================== */
 (function () {
   'use strict';
@@ -15,15 +15,17 @@
 
   const sb = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
   const COLORES = ['#F5B14C','#6CA0F0','#E06CC0','#5FD0A8','#A06CF0','#F0686B','#E8C84A','#5FC7D0'];
+  const AVATARES = ['🎬','🎥','🍿','🎞️','🎟️','📽️','⭐','👽','🚀','🤖','👻','🧛','🐉','🕵️','🦸','🎭'];
   const TEMAS = ['Cualquiera','Terror','Ciencia ficción','Fantasía','Comedia','Drama','Acción','Thriller','Animación','Aventura'];
 
   let perfiles = [];
   let usuarioActual = null;
   let tabActual = 'descubrir';
   let temaActual = '';
+  let modoEditar = false;
 
   // --- Utilidades --------------------------------------------------------
-  function iniciales(n){ const p=n.trim().split(/\s+/); return (((p[0]||'')[0]||'')+((p[1]||'')[0]||'')).toUpperCase()||'?'; }
+  function iniciales(n){ const p=(n||'').trim().split(/\s+/); return (((p[0]||'')[0]||'')+((p[1]||'')[0]||'')).toUpperCase()||'?'; }
   function texto(el){ return (el && el.textContent || '').trim(); }
   function esc(s){ return (s||'').replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c])); }
   function cerrarModal(){ document.getElementById('modal-root').innerHTML = ''; }
@@ -38,9 +40,27 @@
     root.innerHTML='<div class="overlay"><div class="modal">'+html+'</div></div>';
     root.querySelector('.overlay').addEventListener('click',e=>{ if(e.target.classList.contains('overlay')) cerrarModal(); });
   }
+  function modalConfirm(msg,onYes){
+    modal(`<h2>¿Seguro?</h2><p class="rec-nota">${esc(msg)}</p>
+      <div class="acciones"><button class="btn ghost" id="no">Cancelar</button><button class="btn peligro" id="si">Eliminar</button></div>`);
+    document.getElementById('no').addEventListener('click',cerrarModal);
+    document.getElementById('si').addEventListener('click',onYes);
+  }
   function estrellasHTML(n){ let s=''; for(let i=1;i<=5;i++) s+=`<span class="estrella${i<=n?' on':''}">★</span>`; return s; }
   function estrellasElegir(){ return '<div class="estrellas elegir">'+[1,2,3,4,5].map(n=>`<span class="estrella" data-v="${n}">★</span>`).join('')+'</div>'; }
   function pintarEstrellas(grp, val){ grp.querySelectorAll('.estrella').forEach((x,idx)=>x.classList.toggle('on', idx<val)); }
+
+  function avatarHTML(p, extra){
+    const cont = p.avatar ? `<span class="av-emoji">${p.avatar}</span>` : iniciales(p.nombre);
+    return `<span class="avatar ${extra||''}" style="--c:${p.color||'#6366f1'}">${cont}</span>`;
+  }
+  function swatchesHTML(sel){ return '<div class="swatches">'+COLORES.map(c=>`<button class="swatch${c===sel?' sel':''}" style="--c:${c}" data-c="${c}"></button>`).join('')+'</div>'; }
+  function avatarPicker(sel){ const opts=['',...AVATARES]; return '<div class="av-picker">'+opts.map(a=>`<button class="av-opt${a===sel?' sel':''}" data-a="${a}">${a||'Aa'}</button>`).join('')+'</div>'; }
+  function wirePicker(optSel, cb){
+    document.querySelectorAll(optSel).forEach(el=>el.addEventListener('click',()=>{
+      document.querySelectorAll(optSel).forEach(x=>x.classList.remove('sel')); el.classList.add('sel'); cb(el);
+    }));
+  }
 
   // --- Perfiles ----------------------------------------------------------
   async function cargarPerfiles(){
@@ -57,7 +77,7 @@
   function renderSelector(){
     const tiles=perfiles.map(p=>`
       <button class="perfil" data-id="${p.id}">
-        <span class="avatar" style="--c:${p.color}">${iniciales(p.nombre)}</span>
+        ${avatarHTML(p)}
         <span class="perfil-nombre">${esc(p.nombre)}${p.pin?' <span class="lock">🔒</span>':''}</span>
       </button>`).join('');
     app.innerHTML=`
@@ -70,34 +90,90 @@
         <footer class="pie">${CONFIG.VERSION}</footer>
       </section>`;
     app.querySelectorAll('.perfil[data-id]').forEach(b=>b.addEventListener('click',()=>{
-      const p=perfiles.find(x=>x.id===b.dataset.id); if(p.pin) pedirPin(p); else entrar(p);
+      const p=perfiles.find(x=>x.id===b.dataset.id);
+      if(p.pin){ pedirPin(p); } else entrar(p);
     }));
     document.getElementById('add').addEventListener('click',modalNuevoPerfil);
   }
 
   function modalNuevoPerfil(){
-    const sw=COLORES.map((c,i)=>`<button class="swatch${i===0?' sel':''}" style="--c:${c}" data-c="${c}"></button>`).join('');
+    let color=COLORES[0], avatar='';
     modal(`<h2>Nuevo perfil</h2>
       <label class="campo-lbl">Nombre</label>
       <div class="input" id="f-nombre" contenteditable="true" data-ph="Tu nombre"></div>
-      <label class="campo-lbl">Color</label><div class="swatches">${sw}</div>
+      <label class="campo-lbl">Avatar</label>${avatarPicker('')}
+      <label class="campo-lbl">Color</label>${swatchesHTML(color)}
       <label class="campo-lbl">PIN (opcional, 4 dígitos)</label>
       <div class="input pin" id="f-pin" contenteditable="true" inputmode="numeric" data-ph="––––"></div>
-      <div class="acciones"><button class="btn ghost" id="cancelar">Cancelar</button><button class="btn" id="crear">Crear perfil</button></div>`);
-    let color=COLORES[0];
-    document.querySelectorAll('.swatch').forEach(s=>s.addEventListener('click',()=>{
-      document.querySelectorAll('.swatch').forEach(x=>x.classList.remove('sel')); s.classList.add('sel'); color=s.dataset.c;
-    }));
+      <div class="acciones"><button class="btn ghost" id="cancelar">Cancelar</button><button class="btn" id="crear">Crear</button></div>`);
+    wirePicker('.swatch',el=>color=el.dataset.c);
+    wirePicker('.av-opt',el=>avatar=el.dataset.a);
     document.getElementById('cancelar').addEventListener('click',cerrarModal);
     document.getElementById('crear').addEventListener('click',async()=>{
       const nombre=texto(document.getElementById('f-nombre'));
       const pin=texto(document.getElementById('f-pin')).replace(/\D/g,'');
       if(nombre.length<1){ toast('Pon un nombre'); return; }
-      if(pin && pin.length<4){ toast('El PIN debe tener 4 dígitos'); return; }
-      const {data,error}=await sb.from('usuarios').insert({nombre,color,pin:pin||null}).select().single();
-      if(error){ toast('Error al crear: '+error.message); return; }
-      cerrarModal(); perfiles.push(data); renderSelector(); toast('Perfil creado');
+      if(pin && pin.length!==4){ toast('El PIN debe tener 4 dígitos'); return; }
+      const {data,error}=await sb.from('usuarios').insert({nombre,color,avatar:avatar||null,pin:pin||null}).select().single();
+      if(error){ toast('Error: '+error.message); return; }
+      perfiles.push(data); cerrarModal();
+      modalBienvenida(()=>{ modoEditar=false; renderSelector(); });
     });
+  }
+
+  function modalEditarPerfil(p){
+    let color=p.color||COLORES[0], avatar=p.avatar||'';
+    modal(`<h2>Editar perfil</h2>
+      <label class="campo-lbl">Nombre</label>
+      <div class="input" id="f-nombre" contenteditable="true" data-ph="Nombre">${esc(p.nombre)}</div>
+      <label class="campo-lbl">Avatar</label>${avatarPicker(avatar)}
+      <label class="campo-lbl">Color</label>${swatchesHTML(color)}
+      <label class="campo-lbl">PIN</label>
+      <div class="input pin" id="f-pin" contenteditable="true" inputmode="numeric" data-ph="––––"></div>
+      <p class="rec-nota">${p.pin?'Tiene PIN. Escribe uno nuevo para cambiarlo, o déjalo vacío para quitarlo.':'Sin PIN. Escribe 4 dígitos para ponerlo.'}</p>
+      <div class="acciones"><button class="btn ghost" id="cancelar">Cancelar</button><button class="btn" id="guardar">Guardar</button></div>
+      <button class="link-eliminar" id="eliminar">Eliminar perfil</button>`);
+    wirePicker('.swatch',el=>color=el.dataset.c);
+    wirePicker('.av-opt',el=>avatar=el.dataset.a);
+    document.getElementById('cancelar').addEventListener('click',cerrarModal);
+    document.getElementById('guardar').addEventListener('click',async()=>{
+      const nombre=texto(document.getElementById('f-nombre'));
+      const pinTxt=texto(document.getElementById('f-pin')).replace(/\D/g,'');
+      if(nombre.length<1){ toast('Pon un nombre'); return; }
+      if(pinTxt && pinTxt.length!==4){ toast('El PIN debe tener 4 dígitos'); return; }
+      const nuevoPin = pinTxt ? pinTxt : null;
+      const {error}=await sb.from('usuarios').update({nombre,color,avatar:avatar||null,pin:nuevoPin}).eq('id',p.id);
+      if(error){ toast('Error: '+error.message); return; }
+      const actualizado={...p,nombre,color,avatar:avatar||null,pin:nuevoPin};
+      const idx=perfiles.findIndex(x=>x.id===p.id);
+      if(idx>=0) perfiles[idx]=actualizado;
+      if(usuarioActual && usuarioActual.id===p.id) usuarioActual=actualizado;
+      cerrarModal(); renderHome(); toast('Perfil actualizado');
+    });
+    document.getElementById('eliminar').addEventListener('click',()=>{
+      modalConfirm('Se borrará el perfil "'+p.nombre+'" y todas sus valoraciones. No se puede deshacer.', async()=>{
+        const {error}=await sb.from('usuarios').delete().eq('id',p.id);
+        if(error){ toast('Error: '+error.message); return; }
+        perfiles=perfiles.filter(x=>x.id!==p.id);
+        localStorage.removeItem('rc_perfil'); usuarioActual=null;
+        cerrarModal(); renderSelector(); toast('Perfil eliminado');
+      });
+    });
+  }
+
+  function modalBienvenida(onClose){
+    modal(`<h2>¡Bienvenido a RubenceCine! 🎬</h2>
+      <div class="bienvenida">
+        <p>Así funciona:</p>
+        <ol>
+          <li><b>Mis pelis:</b> añade y puntúa con estrellas películas que ya hayas visto.</li>
+          <li><b>Descubrir:</b> elige un tema (o "Cualquiera") y pulsa ✨ Recomiéndame. La IA te sugiere pelis según tus gustos.</li>
+          <li>En cada sugerencia: <b>Guardar</b> (quiero verla) o <b>No la he visto</b> (va a "Por ver" para puntuarla cuando la veas).</li>
+          <li>Cuanto más puntúas, <b>mejores</b> recomendaciones recibes.</li>
+        </ol>
+      </div>
+      <div class="acciones"><button class="btn" id="empezar">¡Empezar!</button></div>`);
+    document.getElementById('empezar').addEventListener('click',()=>{ cerrarModal(); if(onClose) onClose(); });
   }
 
   function pedirPin(p){
@@ -120,9 +196,9 @@
     app.innerHTML=`
       <section class="home">
         <header class="home-top">
-          <span class="avatar sm" style="--c:${p.color}">${iniciales(p.nombre)}</span>
-          <div><p class="hola">Hola,</p><h2>${esc(p.nombre)}</h2></div>
-          <button class="btn ghost peque" id="cambiar">Cambiar</button>
+          ${avatarHTML(p,'sm')}
+          <div class="nombre-wrap"><p class="hola">Hola,</p><h2>${esc(p.nombre)}</h2></div>
+          <button class="btn ghost peque" id="menu" aria-label="Opciones">⋮</button>
         </header>
         <nav class="tabs cuatro">
           <button class="tab" data-t="descubrir">Descubrir</button>
@@ -133,11 +209,23 @@
         <div id="vista"></div>
         <footer class="pie">${CONFIG.VERSION}</footer>
       </section>`;
-    document.getElementById('cambiar').addEventListener('click',()=>{
-      localStorage.removeItem('rc_perfil'); usuarioActual=null; renderSelector();
-    });
+    document.getElementById('menu').addEventListener('click',modalMenu);
     app.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{ tabActual=t.dataset.t; renderTab(); }));
     renderTab();
+  }
+
+  function modalMenu(){
+    modal(`<h2>Opciones</h2>
+      <div class="menu-lista">
+        <button class="menu-item" id="m-editar">✏️ Editar mi perfil</button>
+        <button class="menu-item" id="m-ayuda">❔ ¿Cómo funciona?</button>
+        <button class="menu-item" id="m-cambiar">🔄 Cambiar de perfil</button>
+      </div>
+      <div class="acciones"><button class="btn ghost" id="cerrar">Cerrar</button></div>`);
+    document.getElementById('cerrar').addEventListener('click',cerrarModal);
+    document.getElementById('m-editar').addEventListener('click',()=>{ cerrarModal(); modalEditarPerfil(usuarioActual); });
+    document.getElementById('m-ayuda').addEventListener('click',()=>{ cerrarModal(); modalBienvenida(); });
+    document.getElementById('m-cambiar').addEventListener('click',()=>{ cerrarModal(); localStorage.removeItem('rc_perfil'); usuarioActual=null; renderSelector(); });
   }
 
   function renderTab(){

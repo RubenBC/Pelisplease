@@ -1,5 +1,5 @@
 /* =====================================================================
-   RubenceCine — styles.css  (v0.9)
+   RubenceCine — styles.css  (v0.11)
    Tema oscuro "sala de cine": fondo casi negro azulado + acento ámbar.
    ===================================================================== */
 :root{
@@ -137,3 +137,45 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .tabs.cuatro .tab{font-size:.76rem;padding:9px 4px;white-space:nowrap}
 .rec-rate-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px}
 .rec-rate-row .rate-lbl{color:var(--muted);font-size:.8rem}
+
+/* ---- v0.11: avatares emoji, zona peligro, bienvenida, confirmar ---- */
+.avatar.emoji{font-family:'Sora',sans-serif;font-size:2rem}
+.avatar.sm.emoji{font-size:1.5rem}
+.emoji-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:4px}
+.emoji-pick{aspect-ratio:1;border-radius:12px;border:1px solid var(--border);background:var(--bg-2);
+  font-size:1.35rem;display:grid;place-items:center;transition:outline-color .15s}
+.emoji-pick[data-a=""]{font-family:'Unbounded',sans-serif;font-size:.85rem;font-weight:600;color:var(--muted)}
+.emoji-pick.sel{outline:2px solid var(--accent);outline-offset:1px}
+.conf-txt{color:var(--muted);line-height:1.6;font-size:.92rem}
+.conf-txt b{color:var(--text)}
+.danger-btn{background:var(--danger);color:#0E0F1A}
+.zona-peligro{display:flex;flex-direction:column;gap:4px;margin-top:18px;padding-top:14px;border-top:1px solid var(--border)}
+.link-peligro{color:var(--danger);font-size:.85rem;text-align:left;padding:9px 2px}
+.link-peligro:active{opacity:.7}
+.bienvenida p{color:var(--text);line-height:1.55;font-size:.92rem;margin-bottom:11px}
+.bienvenida p:first-child{color:var(--muted);margin-bottom:14px}
+.bienvenida b{color:var(--accent-2)}
+
+/* ---- v1.0: avatares cinéfilos, editar perfil, bienvenida ---- */
+.av-emoji{font-size:2rem;line-height:1}
+.avatar.sm .av-emoji{font-size:1.4rem}
+.av-picker{display:flex;flex-wrap:wrap;gap:8px}
+.av-opt{width:42px;height:42px;border-radius:12px;background:var(--bg-2);border:1px solid var(--border);font-size:1.4rem;display:grid;place-items:center;color:var(--muted)}
+.av-opt.sel{border-color:var(--accent);background:rgba(245,177,76,.15)}
+.link-editar{display:block;margin:22px auto 0;color:var(--muted);font-size:.85rem;text-decoration:underline;text-underline-offset:3px;background:none}
+.link-eliminar{display:block;width:100%;margin-top:14px;color:var(--danger);font-size:.85rem;padding:8px;background:none}
+.btn.peligro{background:var(--danger);color:#fff}
+.lapiz{font-size:.72rem}
+.perfil.editando .avatar{outline:2px dashed var(--accent);outline-offset:3px}
+.bienvenida{color:var(--text);font-size:.92rem;line-height:1.5}
+.bienvenida ol{margin:10px 0 0;padding-left:20px;display:flex;flex-direction:column;gap:8px}
+.bienvenida b{color:var(--accent-2)}
+.nombre-wrap{flex:1;min-width:0}
+.home-top .peque{margin-left:0}
+#ayuda{flex:none;width:38px;padding:8px 0;text-align:center;font-weight:700}
+
+/* ---- v1.1: menú ⋮ dentro de la cuenta ---- */
+#menu{flex:none;width:38px;padding:8px 0;font-weight:700;font-size:1.3rem;line-height:1}
+.menu-lista{display:flex;flex-direction:column;gap:8px;margin-top:6px}
+.menu-item{text-align:left;padding:14px 16px;border-radius:var(--r-sm);background:var(--bg-2);border:1px solid var(--border);color:var(--text);font-size:.95rem;font-weight:500}
+.menu-item:active{background:var(--surface-2)}
