@@ -3,7 +3,7 @@
    EDITA SOLO ESTE ARCHIVO con tus datos. El resto no hace falta tocarlo.
    ===================================================================== */
 const CONFIG = {
-  VERSION: 'v0.8',
+  VERSION: 'v0.9',
 
   // --- Supabase ---------------------------------------------------------
   SUPABASE_URL: 'https://gucyvkcsbwxprbfdcfha.supabase.co',

@@ -1,5 +1,5 @@
 /* =====================================================================
-   RubenceCine — styles.css  (v0.8)
+   RubenceCine — styles.css  (v0.9)
    Tema oscuro "sala de cine": fondo casi negro azulado + acento ámbar.
    ===================================================================== */
 :root{
@@ -132,3 +132,8 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .vista-toggle{margin-top:10px;color:var(--muted);font-size:.82rem;text-decoration:underline;text-underline-offset:3px;padding:4px 0}
 .rec-rate{margin-top:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .rate-lbl{color:var(--muted);font-size:.82rem}
+
+/* ---- v0.9: 4 pestañas + fila de puntuación abajo ---- */
+.tabs.cuatro .tab{font-size:.76rem;padding:9px 4px;white-space:nowrap}
+.rec-rate-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px}
+.rec-rate-row .rate-lbl{color:var(--muted);font-size:.8rem}

@@ -1,7 +1,7 @@
 /* =====================================================================
-   RubenceCine — app.js  (v0.8)
-   - Estrellas se rellenan en amarillo al puntuar.
-   - Recomendaciones: botón "No me interesa" (descarta) + "Guardar".
+   RubenceCine — app.js  (v0.9)
+   Recomendaciones: botones Guardar / No la he visto + estrellas abajo.
+   Pestañas: Descubrir · Mis pelis · Guardadas · Por ver.
    ===================================================================== */
 (function () {
   'use strict';
@@ -124,10 +124,11 @@
           <div><p class="hola">Hola,</p><h2>${esc(p.nombre)}</h2></div>
           <button class="btn ghost peque" id="cambiar">Cambiar</button>
         </header>
-        <nav class="tabs">
+        <nav class="tabs cuatro">
           <button class="tab" data-t="descubrir">Descubrir</button>
           <button class="tab" data-t="mis">Mis pelis</button>
           <button class="tab" data-t="guardadas">Guardadas</button>
+          <button class="tab" data-t="porver">Por ver</button>
         </nav>
         <div id="vista"></div>
         <footer class="pie">${CONFIG.VERSION}</footer>
@@ -144,7 +145,8 @@
     const v=document.getElementById('vista');
     if(tabActual==='descubrir') vistaDescubrir(v);
     else if(tabActual==='mis') vistaMisPelis(v);
-    else vistaGuardadas(v);
+    else if(tabActual==='guardadas') vistaLista(v,'guardadas');
+    else vistaLista(v,'por_ver');
   }
 
   // --- Descubrir ---------------------------------------------------------
@@ -178,11 +180,10 @@
     if(perfil.length<3){ recs.innerHTML='<p class="vacio">Puntúa al menos 3-5 pelis en <b>Mis pelis</b> para que las recomendaciones tengan base.</p>'; return; }
 
     const vistos=perfil.map(p=>p.titulo);
-    const { data: guard } = await sb.from('guardadas').select('peliculas(titulo)').eq('usuario_id',usuarioActual.id);
-    const guardados=(guard||[]).filter(g=>g.peliculas).map(g=>g.peliculas.titulo);
-    const { data: desc } = await sb.from('descartadas').select('titulo').eq('usuario_id',usuarioActual.id);
-    const descartados=(desc||[]).map(d=>d.titulo).filter(Boolean);
-    const excluir=[...vistos,...guardados,...descartados];
+    const { data: g1 } = await sb.from('guardadas').select('peliculas(titulo)').eq('usuario_id',usuarioActual.id);
+    const { data: g2 } = await sb.from('por_ver').select('peliculas(titulo)').eq('usuario_id',usuarioActual.id);
+    const guardados=[...(g1||[]),...(g2||[])].filter(g=>g.peliculas).map(g=>g.peliculas.titulo);
+    const excluir=[...vistos,...guardados];
 
     let out;
     try{
@@ -204,23 +205,20 @@
 
     const mapa={};
     finales.forEach((x,i)=>mapa[i]=x);
-    recs.innerHTML='<p class="rec-nota"><b>Guarda</b> las que te apetezca ver. Si alguna <b>ya la viste</b>, pulsa "Ya la he visto" para puntuarla.</p>'
+    recs.innerHTML='<p class="rec-nota"><b>Guarda</b> las que quieras ver. Si <b>no la has visto</b> y quizá la veas, ponla en <b>Por ver</b>. Y si <b>ya la viste</b>, púntuala abajo.</p>'
       +'<div class="lista-recs">'+finales.map((x,i)=>recCardHTML(x.m,x.motivo,i)).join('')+'</div>';
 
     recs.querySelectorAll('.rec-card').forEach(card=>{
       const {m,motivo}=mapa[card.dataset.i];
-      const toggle=card.querySelector('.vista-toggle');
-      const rate=card.querySelector('.rec-rate');
-      toggle.addEventListener('click',()=>{ rate.classList.remove('oculto'); toggle.classList.add('oculto'); });
-      card.querySelectorAll('.rec-rate .estrella').forEach(st=>st.addEventListener('click',async()=>{
+      card.querySelector('.guardar-btn').addEventListener('click',async()=>{ await guardarEnLista(m,motivo,'guardadas'); card.remove(); });
+      card.querySelector('.porver-btn').addEventListener('click',async()=>{ await guardarEnLista(m,motivo,'por_ver'); card.remove(); });
+      card.querySelectorAll('.estrellas.elegir .estrella').forEach(st=>st.addEventListener('click',async()=>{
         const val=parseInt(st.dataset.v,10);
         pintarEstrellas(st.parentElement, val);
         await guardarValoracion(m, val);
         card.classList.add('hecha');
         setTimeout(()=>card.remove(), 850);
       }));
-      card.querySelector('.guardar-btn').addEventListener('click',async()=>{ await guardarEnWatchlist(m,motivo); card.remove(); });
-      card.querySelector('.descartar-btn').addEventListener('click',async()=>{ await descartar(m); card.remove(); });
     });
   }
 
@@ -233,12 +231,11 @@
         <p class="peli-titulo">${esc(m.title)}</p>
         <p class="peli-anio">${anio}</p>
         <p class="motivo">${esc(motivo||'')}</p>
-        <div class="rec-actions">
+        <div class="rec-actions sec">
           <button class="mini-btn guardar-btn">＋ Guardar</button>
-          <button class="mini-btn tenue descartar-btn">✕ No me interesa</button>
+          <button class="mini-btn porver-btn">👁 No la he visto</button>
         </div>
-        <button class="vista-toggle">👁 Ya la he visto</button>
-        <div class="rec-rate oculto"><span class="rate-lbl">Tu nota:</span>${estrellasElegir()}</div>
+        <div class="rec-rate-row"><span class="rate-lbl">Si ya la viste:</span>${estrellasElegir()}</div>
       </div></div>`;
   }
 
@@ -298,21 +295,27 @@
     setTimeout(()=>q.focus(),100);
   }
 
-  // --- Guardadas ---------------------------------------------------------
-  async function vistaGuardadas(v){
+  // --- Lista genérica: Guardadas / Por ver ------------------------------
+  async function vistaLista(v, tabla){
     v.innerHTML='<div class="cargando-inline">Cargando…</div>';
-    const {data,error}=await sb.from('guardadas').select('id,motivo,peliculas(*)')
+    const {data,error}=await sb.from(tabla).select('id,motivo,peliculas(*)')
       .eq('usuario_id',usuarioActual.id).order('creado_en',{ascending:false});
     if(error){ v.innerHTML='<p class="vacio">Error: '+esc(error.message)+'</p>'; return; }
-    if(!data||!data.length){ v.innerHTML='<p class="vacio">No tienes nada guardado.<br>Guarda recomendaciones desde <b>Descubrir</b>.</p>'; return; }
+    if(!data||!data.length){
+      v.innerHTML = tabla==='guardadas'
+        ? '<p class="vacio">No tienes nada en <b>Guardadas</b>.<br>Pulsa <b>Guardar</b> en una recomendación.</p>'
+        : '<p class="vacio">No tienes nada en <b>Por ver</b>.<br>Pulsa <b>No la he visto</b> en una recomendación y revísala cuando la veas.</p>';
+      return;
+    }
     const mapa={}; data.forEach(g=>mapa[g.id]=g);
-    v.innerHTML='<p class="rec-nota">Cuando la veas, púntuala (pasa a Mis pelis). O quítala si ya no te interesa.</p><div class="lista-recs">'+data.map(g=>{
+    v.innerHTML='<p class="rec-nota">Cuando la veas, púntuala abajo (pasa a Mis pelis). O quítala si ya no te interesa.</p><div class="lista-recs">'+data.map(g=>{
       const m=g.peliculas||{}; const img=TMDB.poster(m.poster_path,'w185');
       return `<div class="rec-card" data-id="${g.id}">
         ${img?`<img class="peli-poster" src="${img}" loading="lazy" alt="">`:'<div class="peli-poster sinposter">🎬</div>'}
         <div class="peli-info"><p class="peli-titulo">${esc(m.titulo)}</p><p class="peli-anio">${m.anio||''}</p>
         ${g.motivo?`<p class="motivo">${esc(g.motivo)}</p>`:''}
-        <div class="rec-actions">${estrellasElegir()}<button class="mini-btn tenue quitar-btn">Quitar</button></div></div></div>`;
+        <div class="rec-rate-row"><span class="rate-lbl">Puntuar:</span>${estrellasElegir()}<button class="mini-btn tenue quitar-btn">Quitar</button></div>
+        </div></div>`;
     }).join('')+'</div>';
     v.querySelectorAll('.rec-card').forEach(card=>{
       const g=mapa[card.dataset.id]; const tmdb=g.peliculas?g.peliculas.tmdb_id:null;
@@ -320,13 +323,13 @@
         const val=parseInt(st.dataset.v,10);
         pintarEstrellas(st.parentElement, val);
         const ok=await valorarCacheada(tmdb, val);
-        if(ok){ await quitarGuardada(g.id); card.classList.add('hecha'); setTimeout(()=>card.remove(),850); toast('Puntuada · pasa a Mis pelis'); }
+        if(ok){ await borrarDe(tabla, g.id); card.classList.add('hecha'); setTimeout(()=>card.remove(),850); toast('Puntuada · pasa a Mis pelis'); }
       }));
-      card.querySelector('.quitar-btn').addEventListener('click',async()=>{ await quitarGuardada(g.id); card.remove(); toast('Quitada'); });
+      card.querySelector('.quitar-btn').addEventListener('click',async()=>{ await borrarDe(tabla, g.id); card.remove(); toast('Quitada'); });
     });
   }
 
-  // --- Guardar / descartar ----------------------------------------------
+  // --- Guardar / puntuar -------------------------------------------------
   async function guardarValoracion(m, puntuacion){
     try{
       let det={}; try{ det=await TMDB.detalles(m.id); }catch(_){}
@@ -341,22 +344,15 @@
     }catch(e){ toast('No se pudo guardar: '+(e.message||e)); }
   }
 
-  async function guardarEnWatchlist(m, motivo){
+  async function guardarEnLista(m, motivo, tabla){
     try{
       const peli={ tmdb_id:m.id, titulo:m.title, titulo_original:m.original_title||null,
         anio:parseInt((m.release_date||'').slice(0,4),10)||null,
         poster_path:m.poster_path||null, sinopsis:m.overview||null };
       const up1=await sb.from('peliculas').upsert(peli,{onConflict:'tmdb_id'}); if(up1.error) throw up1.error;
-      const up2=await sb.from('guardadas').upsert({usuario_id:usuarioActual.id,tmdb_id:m.id,motivo:motivo||null},{onConflict:'usuario_id,tmdb_id'}); if(up2.error) throw up2.error;
-      toast('Guardada: '+m.title);
+      const up2=await sb.from(tabla).upsert({usuario_id:usuarioActual.id,tmdb_id:m.id,motivo:motivo||null},{onConflict:'usuario_id,tmdb_id'}); if(up2.error) throw up2.error;
+      toast((tabla==='guardadas'?'Guardada: ':'En Por ver: ')+m.title);
     }catch(e){ toast('No se pudo guardar: '+(e.message||e)); }
-  }
-
-  async function descartar(m){
-    try{
-      await sb.from('descartadas').upsert({usuario_id:usuarioActual.id,tmdb_id:m.id,titulo:m.title},{onConflict:'usuario_id,tmdb_id'});
-      toast('Ok, no te la recomendaré más');
-    }catch(e){ toast('No se pudo descartar: '+(e.message||e)); }
   }
 
   async function valorarCacheada(tmdb_id, puntuacion){
@@ -365,7 +361,7 @@
     if(error){ toast('Error: '+error.message); return false; }
     return true;
   }
-  async function quitarGuardada(id){ await sb.from('guardadas').delete().eq('id',id); }
+  async function borrarDe(tabla, id){ await sb.from(tabla).delete().eq('id',id); }
 
   cargarPerfiles();
 })();
