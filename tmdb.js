@@ -1,5 +1,5 @@
 /* =====================================================================
-   RubenceCine — tmdb.js  (v0.4)
+   RubenceCine — tmdb.js  (v0.5)
    Acceso a The Movie Database (TMDB). Solo lectura.
    ===================================================================== */
 const TMDB = (() => {
@@ -20,16 +20,23 @@ const TMDB = (() => {
   }
 
   return {
-    // Buscar películas por texto (solo las que tienen carátula)
     async buscar(query) {
       const d = await pedir('/search/movie', { query, include_adult: 'false', page: '1' });
       return (d.results || []).filter(m => m.poster_path);
     },
-    // Detalles + palabras clave de una peli
+    // Mejor coincidencia para un título (usa el año si se conoce)
+    async buscarUna(titulo, anio) {
+      const res = await this.buscar(titulo);
+      if (!res.length) return null;
+      if (anio) {
+        const m = res.find(r => (r.release_date || '').slice(0, 4) === String(anio));
+        if (m) return m;
+      }
+      return res[0];
+    },
     async detalles(id) {
       return pedir('/movie/' + id, { append_to_response: 'keywords' });
     },
-    // URL de la carátula (size: w185, w342, w500…)
     poster(path, size = 'w342') {
       return path ? IMG + size + path : null;
     }
