@@ -1,5 +1,5 @@
 /* =====================================================================
-   RubenceCine — app.js  (v0.7)
+   RubenceCine — app.js  (v0.8)
    - Estrellas se rellenan en amarillo al puntuar.
    - Recomendaciones: botón "No me interesa" (descarta) + "Guardar".
    ===================================================================== */
@@ -204,12 +204,15 @@
 
     const mapa={};
     finales.forEach((x,i)=>mapa[i]=x);
-    recs.innerHTML='<p class="rec-nota">¿Ya viste alguna? Púntuala con las estrellas (se pondrán en amarillo). Si no, <b>Guárdala</b> para verla o pulsa <b>No me interesa</b>.</p>'
+    recs.innerHTML='<p class="rec-nota"><b>Guarda</b> las que te apetezca ver. Si alguna <b>ya la viste</b>, pulsa "Ya la he visto" para puntuarla.</p>'
       +'<div class="lista-recs">'+finales.map((x,i)=>recCardHTML(x.m,x.motivo,i)).join('')+'</div>';
 
     recs.querySelectorAll('.rec-card').forEach(card=>{
       const {m,motivo}=mapa[card.dataset.i];
-      card.querySelectorAll('.estrellas.elegir .estrella').forEach(st=>st.addEventListener('click',async()=>{
+      const toggle=card.querySelector('.vista-toggle');
+      const rate=card.querySelector('.rec-rate');
+      toggle.addEventListener('click',()=>{ rate.classList.remove('oculto'); toggle.classList.add('oculto'); });
+      card.querySelectorAll('.rec-rate .estrella').forEach(st=>st.addEventListener('click',async()=>{
         const val=parseInt(st.dataset.v,10);
         pintarEstrellas(st.parentElement, val);
         await guardarValoracion(m, val);
@@ -230,11 +233,12 @@
         <p class="peli-titulo">${esc(m.title)}</p>
         <p class="peli-anio">${anio}</p>
         <p class="motivo">${esc(motivo||'')}</p>
-        <div class="rec-actions">${estrellasElegir()}</div>
-        <div class="rec-actions sec">
+        <div class="rec-actions">
           <button class="mini-btn guardar-btn">＋ Guardar</button>
           <button class="mini-btn tenue descartar-btn">✕ No me interesa</button>
         </div>
+        <button class="vista-toggle">👁 Ya la he visto</button>
+        <div class="rec-rate oculto"><span class="rate-lbl">Tu nota:</span>${estrellasElegir()}</div>
       </div></div>`;
   }
 

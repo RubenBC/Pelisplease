@@ -1,5 +1,5 @@
 /* =====================================================================
-   RubenceCine — styles.css  (v0.7)
+   RubenceCine — styles.css  (v0.8)
    Tema oscuro "sala de cine": fondo casi negro azulado + acento ámbar.
    ===================================================================== */
 :root{
@@ -126,3 +126,9 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .mini-btn.tenue{color:var(--muted)}
 .mini-btn.tenue:active{color:var(--danger);border-color:var(--danger)}
 .rec-card.hecha{opacity:.45;transition:opacity .35s ease}
+
+/* ---- v0.8: puntuar opt-in ("Ya la he visto") ---- */
+.oculto{display:none}
+.vista-toggle{margin-top:10px;color:var(--muted);font-size:.82rem;text-decoration:underline;text-underline-offset:3px;padding:4px 0}
+.rec-rate{margin-top:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.rate-lbl{color:var(--muted);font-size:.82rem}
