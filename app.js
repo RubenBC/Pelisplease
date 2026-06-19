@@ -1,5 +1,5 @@
 /* =====================================================================
-   RubenceCine — app.js  (v1.1)
+   RubenceCine — app.js  (v1.3)
    Perfiles: avatares cinéfilos, editar perfil (nombre/avatar/color/PIN),
    eliminar, y mensaje de bienvenida al crear.
    ===================================================================== */
@@ -22,6 +22,7 @@
   let usuarioActual = null;
   let tabActual = 'descubrir';
   let temaActual = '';
+  let recsEstado = 'idle', recsItems = [], recsMsg = '';
   let modoEditar = false;
 
   // --- Utilidades --------------------------------------------------------
@@ -250,61 +251,81 @@
       temaActual=c.dataset.t; v.querySelectorAll('.chip').forEach(x=>x.classList.remove('sel')); c.classList.add('sel');
     }));
     document.getElementById('reco').addEventListener('click',pedirRecomendaciones);
+    pintarRecs();
   }
 
   async function pedirRecomendaciones(){
-    const recs=document.getElementById('recs');
-    if(!CONFIG.EDGE_FUNCTION_URL){ recs.innerHTML='<p class="vacio">Falta EDGE_FUNCTION_URL en config.js.</p>'; return; }
-    recs.innerHTML='<div class="cargando-inline">Pensando recomendaciones…</div>';
-
-    const { data: vals, error } = await sb.from('valoraciones')
-      .select('puntuacion, peliculas(titulo,anio,generos)')
-      .eq('usuario_id', usuarioActual.id);
-    if(error){ recs.innerHTML='<p class="vacio">Error: '+esc(error.message)+'</p>'; return; }
-    const perfil=(vals||[]).filter(x=>x.peliculas).map(x=>({
-      titulo:x.peliculas.titulo, anio:x.peliculas.anio, puntuacion:x.puntuacion,
-      generos:(x.peliculas.generos||[]).join(', ')
-    }));
-    if(perfil.length<3){ recs.innerHTML='<p class="vacio">Puntúa al menos 3-5 pelis en <b>Mis pelis</b> para que las recomendaciones tengan base.</p>'; return; }
-
-    const vistos=perfil.map(p=>p.titulo);
-    const { data: g1 } = await sb.from('guardadas').select('peliculas(titulo)').eq('usuario_id',usuarioActual.id);
-    const { data: g2 } = await sb.from('por_ver').select('peliculas(titulo)').eq('usuario_id',usuarioActual.id);
-    const guardados=[...(g1||[]),...(g2||[])].filter(g=>g.peliculas).map(g=>g.peliculas.titulo);
-    const excluir=[...vistos,...guardados];
-
-    let out;
+    if(recsEstado==='cargando') return;
+    recsEstado='cargando'; recsMsg='Pensando recomendaciones…'; recsItems=[]; pintarRecs();
     try{
-      const r=await fetch(CONFIG.EDGE_FUNCTION_URL,{ method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ perfil, tema: temaActual, excluir, n: 6 }) });
-      out=await r.json();
-    }catch(e){ recs.innerHTML='<p class="vacio">No se pudo contactar con la función.<br>'+esc(String(e))+'</p>'; return; }
-    if(out.error){ recs.innerHTML='<p class="vacio">Error de la IA: '+esc(out.error)+'</p>'; return; }
-    const lista=out.recomendaciones||[];
-    if(!lista.length){ recs.innerHTML='<p class="vacio">La IA no devolvió nada. Prueba otra vez.</p>'; return; }
+      if(!CONFIG.EDGE_FUNCTION_URL){ recsEstado='error'; recsMsg='Falta EDGE_FUNCTION_URL en config.js.'; pintarRecs(); return; }
 
-    recs.innerHTML='<div class="cargando-inline">Buscando carátulas…</div>';
-    const buscadas=await Promise.all(lista.map(async rec=>{
-      try{ const m=await TMDB.buscarUna(rec.titulo, rec.anio); return m?{m,motivo:rec.motivo}:null; }catch(_){ return null; }
-    }));
-    const vistosSet=new Set(vistos.map(t=>t.toLowerCase()));
-    const finales=buscadas.filter(x=>x && !vistosSet.has((x.m.title||'').toLowerCase()));
-    if(!finales.length){ recs.innerHTML='<p class="vacio">No encontré carátulas para las sugerencias. Prueba de nuevo.</p>'; return; }
+      const { data: vals, error } = await sb.from('valoraciones')
+        .select('puntuacion, peliculas(titulo,anio,generos)')
+        .eq('usuario_id', usuarioActual.id);
+      if(error){ recsEstado='error'; recsMsg='Error: '+error.message; pintarRecs(); return; }
+      const perfil=(vals||[]).filter(x=>x.peliculas).map(x=>({
+        titulo:x.peliculas.titulo, anio:x.peliculas.anio, puntuacion:x.puntuacion,
+        generos:(x.peliculas.generos||[]).join(', ')
+      }));
+      if(perfil.length<3){ recsEstado='error'; recsMsg='Puntúa al menos 3-5 pelis en «Mis pelis» para que las recomendaciones tengan base.'; pintarRecs(); return; }
 
-    const mapa={};
-    finales.forEach((x,i)=>mapa[i]=x);
+      const vistos=perfil.map(p=>p.titulo);
+      const { data: g1 } = await sb.from('guardadas').select('peliculas(titulo)').eq('usuario_id',usuarioActual.id);
+      const { data: g2 } = await sb.from('por_ver').select('peliculas(titulo)').eq('usuario_id',usuarioActual.id);
+      const guardados=[...(g1||[]),...(g2||[])].filter(g=>g.peliculas).map(g=>g.peliculas.titulo);
+      const excluir=[...vistos,...guardados];
+
+      let out;
+      try{
+        const r=await fetch(CONFIG.EDGE_FUNCTION_URL,{ method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ perfil, tema: temaActual, excluir, n: 6 }) });
+        out=await r.json();
+      }catch(e){ recsEstado='error'; recsMsg='No se pudo contactar con la función. Revisa la conexión.'; pintarRecs(); return; }
+      if(out.error){
+        recsEstado='error';
+        recsMsg = String(out.error).includes('429')
+          ? 'La IA está saturada ahora mismo (límite del plan gratuito). Espera unos 30 segundos y vuelve a pulsar.'
+          : 'Error de la IA: '+out.error;
+        pintarRecs(); return;
+      }
+      const lista=out.recomendaciones||[];
+      if(!lista.length){ recsEstado='error'; recsMsg='La IA no devolvió nada. Prueba otra vez.'; pintarRecs(); return; }
+
+      recsMsg='Buscando carátulas…'; pintarRecs();
+      const buscadas=await Promise.all(lista.map(async rec=>{
+        try{ const m=await TMDB.buscarUna(rec.titulo, rec.anio); return m?{m,motivo:rec.motivo}:null; }catch(_){ return null; }
+      }));
+      const vistosSet=new Set(vistos.map(t=>t.toLowerCase()));
+      const finales=buscadas.filter(x=>x && !vistosSet.has((x.m.title||'').toLowerCase()));
+      if(!finales.length){ recsEstado='error'; recsMsg='No encontré carátulas para las sugerencias. Prueba de nuevo.'; pintarRecs(); return; }
+
+      recsItems=finales; recsEstado='listo'; pintarRecs();
+    }catch(e){ recsEstado='error'; recsMsg='Error inesperado: '+(e.message||e); pintarRecs(); }
+  }
+
+  function pintarRecs(){
+    const btn=document.getElementById('reco');
+    if(btn){ btn.disabled = (recsEstado==='cargando'); btn.textContent = (recsEstado==='cargando') ? '✨ Pensando…' : '✨ Recomiéndame'; }
+    const recs=document.getElementById('recs');
+    if(!recs) return; // no estamos en Descubrir: el estado queda guardado y se verá al volver
+    if(recsEstado==='cargando'){ recs.innerHTML='<div class="cargando-inline">'+esc(recsMsg)+'</div>'; return; }
+    if(recsEstado==='error'){ recs.innerHTML='<p class="vacio">'+esc(recsMsg)+'</p>'; return; }
+    if(recsEstado!=='listo'){ recs.innerHTML=''; return; }
+    if(!recsItems.length){ recs.innerHTML='<p class="vacio">Ya has gestionado todas las recomendaciones. Pulsa ✨ Recomiéndame para más.</p>'; return; }
     recs.innerHTML='<p class="rec-nota"><b>Guarda</b> las que quieras ver. Si <b>no la has visto</b> y quizá la veas, ponla en <b>Por ver</b>. Y si <b>ya la viste</b>, púntuala abajo.</p>'
-      +'<div class="lista-recs">'+finales.map((x,i)=>recCardHTML(x.m,x.motivo,i)).join('')+'</div>';
-
+      +'<div class="lista-recs">'+recsItems.map((x,i)=>recCardHTML(x.m,x.motivo,i)).join('')+'</div>';
     recs.querySelectorAll('.rec-card').forEach(card=>{
-      const {m,motivo}=mapa[card.dataset.i];
-      card.querySelector('.guardar-btn').addEventListener('click',async()=>{ await guardarEnLista(m,motivo,'guardadas'); card.remove(); });
-      card.querySelector('.porver-btn').addEventListener('click',async()=>{ await guardarEnLista(m,motivo,'por_ver'); card.remove(); });
+      const x=recsItems[parseInt(card.dataset.i,10)]; if(!x) return; const m=x.m, motivo=x.motivo;
+      const quitar=()=>{ recsItems=recsItems.filter(it=>it.m.id!==m.id); card.remove(); };
+      card.querySelector('.guardar-btn').addEventListener('click',async()=>{ await guardarEnLista(m,motivo,'guardadas'); quitar(); });
+      card.querySelector('.porver-btn').addEventListener('click',async()=>{ await guardarEnLista(m,motivo,'por_ver'); quitar(); });
       card.querySelectorAll('.estrellas.elegir .estrella').forEach(st=>st.addEventListener('click',async()=>{
         const val=parseInt(st.dataset.v,10);
         pintarEstrellas(st.parentElement, val);
         await guardarValoracion(m, val);
         card.classList.add('hecha');
+        recsItems=recsItems.filter(it=>it.m.id!==m.id);
         setTimeout(()=>card.remove(), 850);
       }));
     });
