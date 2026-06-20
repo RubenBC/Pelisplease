@@ -1,5 +1,5 @@
 /* =====================================================================
-   RubenceCine — tmdb.js  (v1.4)
+   RubenceCine — tmdb.js  (v1.6)
    Acceso a The Movie Database (TMDB). Solo lectura.
    ===================================================================== */
 const TMDB = (() => {
@@ -38,7 +38,7 @@ const TMDB = (() => {
     },
     // Ficha completa: detalles + plataformas (España) + tráiler
     async ficha(id) {
-      const d = await pedir('/movie/' + id, { append_to_response: 'watch/providers' });
+      const d = await pedir('/movie/' + id, { append_to_response: 'watch/providers,credits' });
       // Tráiler: intenta vídeos en español y, si no hay, en inglés
       let vids = [];
       try { const a = await pedir('/movie/' + id + '/videos'); vids = a.results || []; } catch (_) {}

@@ -1,5 +1,5 @@
 /* =====================================================================
-   RubenceCine — app.js  (v1.5)
+   RubenceCine — app.js  (v1.6)
    Perfiles: avatares cinéfilos, editar perfil (nombre/avatar/color/PIN),
    eliminar, y mensaje de bienvenida al crear.
    ===================================================================== */
@@ -531,6 +531,11 @@
     const dur=d.runtime?fmtDur(d.runtime):'';
     const generos=(d.genres||[]).map(g=>g.name).join(' · ');
     const sinopsis=d.overview||'(Sin sinopsis disponible en español.)';
+    const credits=d.credits||{};
+    const director=(credits.crew||[]).filter(c=>c.job==='Director').map(c=>c.name).join(', ');
+    const reparto=(credits.cast||[]).slice(0,6).map(c=>c.name).join(', ');
+    const nota=d.vote_average?('★ '+d.vote_average.toFixed(1)):'';
+    const origen=(d.original_title&&d.original_title!==d.title)?d.original_title:'';
 
     const vids=(d.videos&&d.videos.results)||[];
     const tr=vids.find(v=>v.site==='YouTube'&&v.type==='Trailer')||vids.find(v=>v.site==='YouTube'&&v.type==='Teaser')||vids.find(v=>v.site==='YouTube');
@@ -557,10 +562,15 @@
           ${poster?`<img class="ficha-poster" src="${poster}" alt="">`:''}
           <div class="ficha-meta">
             <h2 class="ficha-titulo">${esc(d.title)}</h2>
-            <p class="peli-anio">${anio}${dur?' · '+dur:''}</p>
+            ${origen?`<p class="ficha-orig">${esc(origen)}</p>`:''}
+            <p class="peli-anio">${anio}${dur?' · '+dur:''}${nota?' · <span class="ficha-nota">'+nota+'</span>':''}</p>
             <p class="ficha-gen">${esc(generos)}</p>
             ${trailer?`<a class="btn peque trailer-btn" href="${trailer}" target="_blank" rel="noopener">▶ Tráiler</a>`:''}
           </div>
+        </div>
+        <div class="ficha-datos">
+          ${director?`<p><span>Dirección</span> ${esc(director)}</p>`:''}
+          ${reparto?`<p><span>Reparto</span> ${esc(reparto)}</p>`:''}
         </div>
         <p class="ficha-sinopsis">${esc(sinopsis)}</p>
         <h3 class="seccion">Dónde verla en España</h3>

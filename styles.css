@@ -205,3 +205,10 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .mini-btn.tenue{background:transparent;border:1px solid var(--border);color:var(--muted)}
 .peli-card .rec-rate-row{display:flex;align-items:center;gap:10px;margin-top:6px;flex-wrap:wrap}
 .quitar-mis{margin-left:auto}
+
+/* ---- v1.6: más datos en la ficha (director, reparto, nota) ---- */
+.ficha-orig{color:var(--muted);font-size:.8rem;font-style:italic;margin-bottom:2px}
+.ficha-nota{color:var(--accent);font-weight:600}
+.ficha-datos{margin:0 0 14px;font-size:.85rem;line-height:1.5}
+.ficha-datos p{margin:3px 0}
+.ficha-datos span{color:var(--muted);display:inline-block;min-width:72px;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em}

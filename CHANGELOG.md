@@ -11,6 +11,11 @@ Netflix sobre Supabase.
 
 ---
 
+## v1.6 — Más datos en la ficha
+- La ficha ahora muestra también **dirección**, **reparto** (hasta 6 actores),
+  **nota de TMDB** (★) y el **título original** si difiere del español.
+- Archivos: `app.js`, `tmdb.js`, `styles.css`, `config.js`, `index.html`.
+
 ## v1.5 — Recomendaciones blindadas, repuntuar y más filtros
 - Blindaje real: las pelis que ya tienes puntuadas, en Guardadas o en Por ver
   nunca aparecen en recomendaciones (filtro por ID de TMDB en la propia app,
