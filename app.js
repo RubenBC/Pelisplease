@@ -1,5 +1,5 @@
 /* =====================================================================
-   RubenceCine — app.js  (v1.4)
+   RubenceCine — app.js  (v1.5)
    Perfiles: avatares cinéfilos, editar perfil (nombre/avatar/color/PIN),
    eliminar, y mensaje de bienvenida al crear.
    ===================================================================== */
@@ -17,11 +17,13 @@
   const COLORES = ['#F5B14C','#6CA0F0','#E06CC0','#5FD0A8','#A06CF0','#F0686B','#E8C84A','#5FC7D0'];
   const AVATARES = ['🎬','🎥','🍿','🎞️','🎟️','📽️','⭐','👽','🚀','🤖','👻','🧛','🐉','🕵️','🦸','🎭'];
   const TEMAS = ['Cualquiera','Terror','Ciencia ficción','Fantasía','Comedia','Drama','Acción','Thriller','Animación','Aventura'];
+  const DECADAS = [{l:'Cualquiera',v:''},{l:'2020s',v:'de la década de 2020'},{l:'2010s',v:'de la década de 2010'},{l:'2000s',v:'de la década de 2000'},{l:'Años 90',v:'de los años 90'},{l:'Años 80',v:'de los años 80'},{l:'Clásicas',v:'clásicas (anteriores a 1980)'}];
+  const DURACIONES = [{l:'Cualquiera',v:''},{l:'Cortas',v:'de duración corta, menos de 100 minutos'},{l:'Largas',v:'largas, más de 150 minutos'}];
 
   let perfiles = [];
   let usuarioActual = null;
   let tabActual = 'descubrir';
-  let temaActual = '';
+  let temaActual = '', decadaActual = '', duracionActual = '';
   let recsEstado = 'idle', recsItems = [], recsMsg = '';
   let modoEditar = false;
 
@@ -48,7 +50,7 @@
     document.getElementById('si').addEventListener('click',onYes);
   }
   function estrellasHTML(n){ let s=''; for(let i=1;i<=5;i++) s+=`<span class="estrella${i<=n?' on':''}">★</span>`; return s; }
-  function estrellasElegir(){ return '<div class="estrellas elegir">'+[1,2,3,4,5].map(n=>`<span class="estrella" data-v="${n}">★</span>`).join('')+'</div>'; }
+  function estrellasElegir(actual){ actual=actual||0; return '<div class="estrellas elegir">'+[1,2,3,4,5].map(n=>`<span class="estrella${n<=actual?' on':''}" data-v="${n}">★</span>`).join('')+'</div>'; }
   function pintarEstrellas(grp, val){ grp.querySelectorAll('.estrella').forEach((x,idx)=>x.classList.toggle('on', idx<val)); }
 
   function avatarHTML(p, extra){
@@ -239,17 +241,27 @@
   }
 
   // --- Descubrir ---------------------------------------------------------
+  function chipsGrupo(grupo, opciones, actual){
+    return '<div class="chips" data-grupo="'+grupo+'">'+opciones.map(o=>
+      `<button class="chip${o.v===actual?' sel':''}" data-v="${esc(o.v)}">${o.l}</button>`).join('')+'</div>';
+  }
   function vistaDescubrir(v){
-    const chips=TEMAS.map(t=>{ const val=t==='Cualquiera'?'':t;
-      return `<button class="chip${val===temaActual?' sel':''}" data-t="${val}">${t}</button>`; }).join('');
+    const temasOpc=TEMAS.map(t=>({l:t, v: t==='Cualquiera'?'':t}));
     v.innerHTML=`
       <p class="seccion">¿Qué te apetece hoy?</p>
-      <div class="chips">${chips}</div>
+      <p class="filtro-lbl">Género</p>${chipsGrupo('tema', temasOpc, temaActual)}
+      <p class="filtro-lbl">Década</p>${chipsGrupo('decada', DECADAS, decadaActual)}
+      <p class="filtro-lbl">Duración</p>${chipsGrupo('duracion', DURACIONES, duracionActual)}
       <button class="btn recomendar-btn" id="reco">✨ Recomiéndame</button>
       <div id="recs"></div>`;
-    v.querySelectorAll('.chip').forEach(c=>c.addEventListener('click',()=>{
-      temaActual=c.dataset.t; v.querySelectorAll('.chip').forEach(x=>x.classList.remove('sel')); c.classList.add('sel');
-    }));
+    v.querySelectorAll('.chips').forEach(grp=>{
+      const g=grp.dataset.grupo;
+      grp.querySelectorAll('.chip').forEach(c=>c.addEventListener('click',()=>{
+        grp.querySelectorAll('.chip').forEach(x=>x.classList.remove('sel')); c.classList.add('sel');
+        const val=c.dataset.v;
+        if(g==='tema') temaActual=val; else if(g==='decada') decadaActual=val; else duracionActual=val;
+      }));
+    });
     document.getElementById('reco').addEventListener('click',pedirRecomendaciones);
     pintarRecs();
   }
@@ -261,25 +273,36 @@
       if(!CONFIG.EDGE_FUNCTION_URL){ recsEstado='error'; recsMsg='Falta EDGE_FUNCTION_URL en config.js.'; pintarRecs(); return; }
 
       const { data: vals, error } = await sb.from('valoraciones')
-        .select('puntuacion, peliculas(titulo,anio,generos)')
+        .select('puntuacion, peliculas(tmdb_id,titulo,anio,generos)')
         .eq('usuario_id', usuarioActual.id);
       if(error){ recsEstado='error'; recsMsg='Error: '+error.message; pintarRecs(); return; }
-      const perfil=(vals||[]).filter(x=>x.peliculas).map(x=>({
+      const filas=(vals||[]).filter(x=>x.peliculas);
+      const perfil=filas.map(x=>({
         titulo:x.peliculas.titulo, anio:x.peliculas.anio, puntuacion:x.puntuacion,
         generos:(x.peliculas.generos||[]).join(', ')
       }));
       if(perfil.length<3){ recsEstado='error'; recsMsg='Puntúa al menos 3-5 pelis en «Mis pelis» para que las recomendaciones tengan base.'; pintarRecs(); return; }
 
-      const vistos=perfil.map(p=>p.titulo);
-      const { data: g1 } = await sb.from('guardadas').select('peliculas(titulo)').eq('usuario_id',usuarioActual.id);
-      const { data: g2 } = await sb.from('por_ver').select('peliculas(titulo)').eq('usuario_id',usuarioActual.id);
-      const guardados=[...(g1||[]),...(g2||[])].filter(g=>g.peliculas).map(g=>g.peliculas.titulo);
-      const excluir=[...vistos,...guardados];
+      // Blindaje: set de tmdb_id a excluir (puntuadas + guardadas + por ver)
+      const excluirIds=new Set();
+      filas.forEach(x=>excluirIds.add(x.peliculas.tmdb_id));
+      const { data: g1 } = await sb.from('guardadas').select('peliculas(tmdb_id,titulo)').eq('usuario_id',usuarioActual.id);
+      const { data: g2 } = await sb.from('por_ver').select('peliculas(tmdb_id,titulo)').eq('usuario_id',usuarioActual.id);
+      const gAll=[...(g1||[]),...(g2||[])].filter(g=>g.peliculas);
+      gAll.forEach(g=>excluirIds.add(g.peliculas.tmdb_id));
+      const excluir=[...perfil.map(p=>p.titulo), ...gAll.map(g=>g.peliculas.titulo)];
+
+      // Filtros empaquetados en el "tema" (sin tocar la Edge Function)
+      const criterios=[];
+      if(temaActual) criterios.push('de género '+temaActual);
+      if(decadaActual) criterios.push(decadaActual);
+      if(duracionActual) criterios.push(duracionActual);
+      const temaTexto=criterios.join(', ');
 
       let out;
       try{
         const r=await fetch(CONFIG.EDGE_FUNCTION_URL,{ method:'POST', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ perfil, tema: temaActual, excluir, n: 6 }) });
+          body: JSON.stringify({ perfil, tema: temaTexto, excluir, n: 6 }) });
         out=await r.json();
       }catch(e){ recsEstado='error'; recsMsg='No se pudo contactar con la función. Revisa la conexión.'; pintarRecs(); return; }
       if(out.error){
@@ -296,8 +319,7 @@
       const buscadas=await Promise.all(lista.map(async rec=>{
         try{ const m=await TMDB.buscarUna(rec.titulo, rec.anio); return m?{m,motivo:rec.motivo}:null; }catch(_){ return null; }
       }));
-      const vistosSet=new Set(vistos.map(t=>t.toLowerCase()));
-      const finales=buscadas.filter(x=>x && !vistosSet.has((x.m.title||'').toLowerCase()));
+      const finales=buscadas.filter(x=>x && !excluirIds.has(x.m.id));
       if(!finales.length){ recsEstado='error'; recsMsg='No encontré carátulas para las sugerencias. Prueba de nuevo.'; pintarRecs(); return; }
 
       recsItems=finales; recsEstado='listo'; pintarRecs();
@@ -368,10 +390,21 @@
       return `<div class="peli-card" data-tmdb="${m.tmdb_id}">
         ${img?`<img class="peli-poster" src="${img}" loading="lazy" alt="">`:'<div class="peli-poster sinposter">🎬</div>'}
         <div class="peli-info"><p class="peli-titulo">${esc(m.titulo)}</p><p class="peli-anio">${m.anio||''}</p>
-        <div class="estrellas">${estrellasHTML(v.puntuacion)}</div></div></div>`;
+        <div class="rec-rate-row">${estrellasElegir(v.puntuacion)}<button class="mini-btn tenue quitar-mis">Quitar</button></div>
+        </div></div>`;
     }).join('')+'</div>';
-    cont.querySelectorAll('.peli-card').forEach(card=>{ const id=card.dataset.tmdb; if(!id) return;
-      card.querySelectorAll('.peli-poster,.peli-titulo').forEach(el=>el.addEventListener('click',()=>modalFicha(parseInt(id,10)))); });
+    cont.querySelectorAll('.peli-card').forEach(card=>{
+      const id=parseInt(card.dataset.tmdb,10); if(!id) return;
+      card.querySelectorAll('.peli-poster,.peli-titulo').forEach(el=>el.addEventListener('click',()=>modalFicha(id)));
+      card.querySelectorAll('.estrellas.elegir .estrella').forEach(st=>st.addEventListener('click',async()=>{
+        const val=parseInt(st.dataset.v,10);
+        pintarEstrellas(st.parentElement, val);
+        await valorarCacheada(id, val);
+        toast('Nota actualizada · '+val+'★');
+      }));
+      const q=card.querySelector('.quitar-mis');
+      if(q) q.addEventListener('click',async()=>{ await quitarDeMisPelis(id); card.remove(); toast('Quitada de Mis pelis'); });
+    });
   }
 
   function modalBuscar(){
@@ -475,6 +508,7 @@
     return true;
   }
   async function borrarDe(tabla, id){ await sb.from(tabla).delete().eq('id',id); }
+  async function quitarDeMisPelis(tmdb_id){ await sb.from('valoraciones').delete().eq('usuario_id',usuarioActual.id).eq('tmdb_id',tmdb_id); }
 
   // --- Ficha de la peli (sinopsis, tráiler, dónde verla) ----------------
   function fmtDur(min){ const h=Math.floor(min/60), m=min%60; return (h?h+'h ':'')+(m?m+'min':''); }

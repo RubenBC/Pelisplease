@@ -11,6 +11,17 @@ Netflix sobre Supabase.
 
 ---
 
+## v1.5 — Recomendaciones blindadas, repuntuar y más filtros
+- Blindaje real: las pelis que ya tienes puntuadas, en Guardadas o en Por ver
+  nunca aparecen en recomendaciones (filtro por ID de TMDB en la propia app,
+  aunque la IA se despiste).
+- Mis pelis: las estrellas ahora son interactivas para **cambiar la nota** si te
+  equivocaste, y botón **Quitar** para sacar una peli de la lista.
+- Descubrir: filtros nuevos además del género — **Década** (2020s…clásicas) y
+  **Duración** (cortas / largas). Se combinan con el género al pedir
+  recomendaciones (no requiere cambios en la Edge Function).
+- Archivos: `app.js`, `styles.css`, `config.js`, `index.html`.
+
 ## v1.4 — Ficha de la peli + Dónde verla
 - Tocar una carátula o título abre la ficha de la película: póster grande, año,
   duración, géneros, sinopsis (en español) y botón de tráiler (YouTube).

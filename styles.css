@@ -198,3 +198,10 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .jw-link{display:inline-block;margin-top:6px;color:var(--accent);font-size:.85rem;text-decoration:none}
 .jw-attr{color:var(--muted);opacity:.6;font-size:.7rem;margin-top:12px}
 .tenue{color:var(--muted);font-size:.85rem;line-height:1.45}
+
+/* ---- v1.5: filtros extra + repuntuar en Mis pelis ---- */
+.filtro-lbl{color:var(--muted);font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;margin:10px 0 6px;font-weight:600}
+.filtro-lbl:first-child{margin-top:0}
+.mini-btn.tenue{background:transparent;border:1px solid var(--border);color:var(--muted)}
+.peli-card .rec-rate-row{display:flex;align-items:center;gap:10px;margin-top:6px;flex-wrap:wrap}
+.quitar-mis{margin-left:auto}
