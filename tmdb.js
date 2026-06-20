@@ -1,5 +1,5 @@
 /* =====================================================================
-   RubenceCine — tmdb.js  (v0.5)
+   RubenceCine — tmdb.js  (v1.4)
    Acceso a The Movie Database (TMDB). Solo lectura.
    ===================================================================== */
 const TMDB = (() => {
@@ -24,7 +24,6 @@ const TMDB = (() => {
       const d = await pedir('/search/movie', { query, include_adult: 'false', page: '1' });
       return (d.results || []).filter(m => m.poster_path);
     },
-    // Mejor coincidencia para un título (usa el año si se conoce)
     async buscarUna(titulo, anio) {
       const res = await this.buscar(titulo);
       if (!res.length) return null;
@@ -37,7 +36,27 @@ const TMDB = (() => {
     async detalles(id) {
       return pedir('/movie/' + id, { append_to_response: 'keywords' });
     },
+    // Ficha completa: detalles + plataformas (España) + tráiler
+    async ficha(id) {
+      const d = await pedir('/movie/' + id, { append_to_response: 'watch/providers' });
+      // Tráiler: intenta vídeos en español y, si no hay, en inglés
+      let vids = [];
+      try { const a = await pedir('/movie/' + id + '/videos'); vids = a.results || []; } catch (_) {}
+      if (!vids.length) {
+        try {
+          const url = new URL(BASE + '/movie/' + id + '/videos');
+          url.searchParams.set('language', 'en-US');
+          const r = await fetch(url.toString(), { headers });
+          const j = await r.json(); vids = j.results || [];
+        } catch (_) {}
+      }
+      d.videos = { results: vids };
+      return d;
+    },
     poster(path, size = 'w342') {
+      return path ? IMG + size + path : null;
+    },
+    providerLogo(path, size = 'w45') {
       return path ? IMG + size + path : null;
     }
   };

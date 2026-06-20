@@ -1,5 +1,5 @@
 /* =====================================================================
-   RubenceCine — app.js  (v1.3)
+   RubenceCine — app.js  (v1.4)
    Perfiles: avatares cinéfilos, editar perfil (nombre/avatar/color/PIN),
    eliminar, y mensaje de bienvenida al crear.
    ===================================================================== */
@@ -318,6 +318,7 @@
     recs.querySelectorAll('.rec-card').forEach(card=>{
       const x=recsItems[parseInt(card.dataset.i,10)]; if(!x) return; const m=x.m, motivo=x.motivo;
       const quitar=()=>{ recsItems=recsItems.filter(it=>it.m.id!==m.id); card.remove(); };
+      card.querySelectorAll('.peli-poster,.peli-titulo').forEach(el=>el.addEventListener('click',()=>modalFicha(m.id)));
       card.querySelector('.guardar-btn').addEventListener('click',async()=>{ await guardarEnLista(m,motivo,'guardadas'); quitar(); });
       card.querySelector('.porver-btn').addEventListener('click',async()=>{ await guardarEnLista(m,motivo,'por_ver'); quitar(); });
       card.querySelectorAll('.estrellas.elegir .estrella').forEach(st=>st.addEventListener('click',async()=>{
@@ -334,7 +335,7 @@
   function recCardHTML(m,motivo,i){
     const img=TMDB.poster(m.poster_path,'w185');
     const anio=(m.release_date||'').slice(0,4);
-    return `<div class="rec-card" data-i="${i}">
+    return `<div class="rec-card" data-i="${i}" data-tmdb="${m.id}">
       ${img?`<img class="peli-poster" src="${img}" loading="lazy" alt="">`:'<div class="peli-poster sinposter">🎬</div>'}
       <div class="peli-info">
         <p class="peli-titulo">${esc(m.title)}</p>
@@ -364,11 +365,13 @@
     if(!data||!data.length){ cont.innerHTML='<p class="vacio">Aún no has puntuado ninguna peli.<br>Pulsa <b>Añadir película vista</b> y puntúa 5 o más.</p>'; return; }
     cont.innerHTML='<div class="lista-pelis">'+data.map(v=>{
       const m=v.peliculas||{}; const img=TMDB.poster(m.poster_path);
-      return `<div class="peli-card">
+      return `<div class="peli-card" data-tmdb="${m.tmdb_id}">
         ${img?`<img class="peli-poster" src="${img}" loading="lazy" alt="">`:'<div class="peli-poster sinposter">🎬</div>'}
         <div class="peli-info"><p class="peli-titulo">${esc(m.titulo)}</p><p class="peli-anio">${m.anio||''}</p>
         <div class="estrellas">${estrellasHTML(v.puntuacion)}</div></div></div>`;
     }).join('')+'</div>';
+    cont.querySelectorAll('.peli-card').forEach(card=>{ const id=card.dataset.tmdb; if(!id) return;
+      card.querySelectorAll('.peli-poster,.peli-titulo').forEach(el=>el.addEventListener('click',()=>modalFicha(parseInt(id,10)))); });
   }
 
   function modalBuscar(){
@@ -428,6 +431,7 @@
     }).join('')+'</div>';
     v.querySelectorAll('.rec-card').forEach(card=>{
       const g=mapa[card.dataset.id]; const tmdb=g.peliculas?g.peliculas.tmdb_id:null;
+      if(tmdb) card.querySelectorAll('.peli-poster,.peli-titulo').forEach(el=>el.addEventListener('click',()=>modalFicha(tmdb)));
       card.querySelectorAll('.estrellas.elegir .estrella').forEach(st=>st.addEventListener('click',async()=>{
         const val=parseInt(st.dataset.v,10);
         pintarEstrellas(st.parentElement, val);
@@ -471,6 +475,68 @@
     return true;
   }
   async function borrarDe(tabla, id){ await sb.from(tabla).delete().eq('id',id); }
+
+  // --- Ficha de la peli (sinopsis, tráiler, dónde verla) ----------------
+  function fmtDur(min){ const h=Math.floor(min/60), m=min%60; return (h?h+'h ':'')+(m?m+'min':''); }
+  function provChip(p){
+    const logo=TMDB.providerLogo(p.logo_path);
+    return `<div class="prov">${logo?`<img src="${logo}" alt="">`:''}${esc(p.provider_name)}</div>`;
+  }
+
+  async function modalFicha(id){
+    modal('<div class="cargando-inline">Cargando ficha…</div>');
+    let d;
+    try{ d=await TMDB.ficha(id); }
+    catch(e){
+      modal('<p class="vacio">No se pudo cargar la ficha.</p><div class="acciones"><button class="btn ghost" id="cerrar">Cerrar</button></div>');
+      document.getElementById('cerrar').addEventListener('click',cerrarModal); return;
+    }
+
+    const poster=TMDB.poster(d.poster_path,'w342');
+    const anio=(d.release_date||'').slice(0,4);
+    const dur=d.runtime?fmtDur(d.runtime):'';
+    const generos=(d.genres||[]).map(g=>g.name).join(' · ');
+    const sinopsis=d.overview||'(Sin sinopsis disponible en español.)';
+
+    const vids=(d.videos&&d.videos.results)||[];
+    const tr=vids.find(v=>v.site==='YouTube'&&v.type==='Trailer')||vids.find(v=>v.site==='YouTube'&&v.type==='Teaser')||vids.find(v=>v.site==='YouTube');
+    const trailer=tr?'https://www.youtube.com/watch?v='+tr.key:null;
+
+    const wp=(d['watch/providers']&&d['watch/providers'].results&&d['watch/providers'].results.ES)||null;
+    const flat=(wp&&wp.flatrate)||[];
+    const otros=(wp&&[...(wp.rent||[]),...(wp.buy||[])])||[];
+    const vistos=new Set();
+    const otrosUnic=otros.filter(p=>{ if(vistos.has(p.provider_id)) return false; vistos.add(p.provider_id); return true; });
+    let provHTML;
+    if(flat.length){
+      provHTML='<div class="prov-lista">'+flat.map(provChip).join('')+'</div>';
+    } else if(otrosUnic.length){
+      provHTML='<p class="tenue">No está en suscripción, pero se puede alquilar o comprar en:</p><div class="prov-lista">'+otrosUnic.map(provChip).join('')+'</div>';
+    } else {
+      provHTML='<p class="tenue">No disponible en plataformas en España ahora mismo.</p>';
+    }
+    const jw=(wp&&wp.link)?`<a class="jw-link" href="${wp.link}" target="_blank" rel="noopener">Ver opciones en JustWatch ›</a>`:'';
+
+    modal(`
+      <div class="ficha">
+        <div class="ficha-cab">
+          ${poster?`<img class="ficha-poster" src="${poster}" alt="">`:''}
+          <div class="ficha-meta">
+            <h2 class="ficha-titulo">${esc(d.title)}</h2>
+            <p class="peli-anio">${anio}${dur?' · '+dur:''}</p>
+            <p class="ficha-gen">${esc(generos)}</p>
+            ${trailer?`<a class="btn peque trailer-btn" href="${trailer}" target="_blank" rel="noopener">▶ Tráiler</a>`:''}
+          </div>
+        </div>
+        <p class="ficha-sinopsis">${esc(sinopsis)}</p>
+        <h3 class="seccion">Dónde verla en España</h3>
+        ${provHTML}
+        ${jw}
+        <p class="jw-attr">Disponibilidad facilitada por JustWatch</p>
+        <div class="acciones"><button class="btn ghost" id="cerrar">Cerrar</button></div>
+      </div>`);
+    document.getElementById('cerrar').addEventListener('click',cerrarModal);
+  }
 
   cargarPerfiles();
 })();

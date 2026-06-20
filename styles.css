@@ -179,3 +179,22 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .menu-lista{display:flex;flex-direction:column;gap:8px;margin-top:6px}
 .menu-item{text-align:left;padding:14px 16px;border-radius:var(--r-sm);background:var(--bg-2);border:1px solid var(--border);color:var(--text);font-size:.95rem;font-weight:500}
 .menu-item:active{background:var(--surface-2)}
+
+/* ---- v1.2: botón deshabilitado mientras la IA piensa ---- */
+.btn:disabled{opacity:.55;cursor:default}
+
+/* ---- v1.4: ficha de la peli + dónde verla ---- */
+.peli-poster,.peli-titulo{cursor:pointer}
+.ficha-cab{display:flex;gap:14px;margin-bottom:14px}
+.ficha-poster{width:110px;border-radius:10px;flex:none;background:var(--bg-2);align-self:flex-start}
+.ficha-meta{flex:1;min-width:0;display:flex;flex-direction:column}
+.ficha-titulo{font-size:1.2rem;font-weight:700;line-height:1.2;margin-bottom:4px}
+.ficha-gen{color:var(--muted);font-size:.82rem;margin-top:6px}
+.trailer-btn{display:inline-block;margin-top:12px;align-self:flex-start;text-decoration:none;text-align:center;flex:none}
+.ficha-sinopsis{font-size:.9rem;line-height:1.55;margin-bottom:16px}
+.prov-lista{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:8px}
+.prov{display:flex;align-items:center;gap:7px;background:var(--bg-2);border:1px solid var(--border);border-radius:999px;padding:5px 13px 5px 5px;font-size:.82rem}
+.prov img{width:26px;height:26px;border-radius:6px;flex:none}
+.jw-link{display:inline-block;margin-top:6px;color:var(--accent);font-size:.85rem;text-decoration:none}
+.jw-attr{color:var(--muted);opacity:.6;font-size:.7rem;margin-top:12px}
+.tenue{color:var(--muted);font-size:.85rem;line-height:1.45}

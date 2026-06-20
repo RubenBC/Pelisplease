@@ -11,10 +11,16 @@ Netflix sobre Supabase.
 
 ---
 
-## v1.3 — 19/06/2026
-- Recomendaciones persistentes: el proceso ya **no se corta** al cambiar de
-  pestaña o salir a otra app. El estado (cargando/listo) se guarda en memoria y
-  se ve al volver a "Descubrir".
+## v1.4 — Ficha de la peli + Dónde verla
+- Tocar una carátula o título abre la ficha de la película: póster grande, año,
+  duración, géneros, sinopsis (en español) y botón de tráiler (YouTube).
+- Sección "Dónde verla en España": plataformas de streaming, alquiler o compra
+  (datos de TMDB + JustWatch), con enlace a JustWatch.
+- Archivos: `app.js`, `tmdb.js`, `styles.css`, `index.html`, `config.js`.
+
+## v1.3 — Recomendaciones que no se cortan
+- El proceso de recomendar ya no se interrumpe al cambiar de pestaña o salir a
+  otra app: el estado se guarda en memoria y se ve al volver a "Descubrir".
 - El botón muestra "✨ Pensando…" y se bloquea mientras trabaja.
 - Las recomendaciones gestionadas (guardar / por ver / puntuar) desaparecen y el
   resto permanece aunque cambies de pestaña.
@@ -22,13 +28,13 @@ Netflix sobre Supabase.
 
 ## v1.2 — Mitigación de errores 429 (opcional, no desplegada)
 - Edge Function: cambio de modelo a `gemini-2.5-flash-lite` (límites gratuitos
-  más altos) y **reintento automático** si Gemini responde 429.
+  más altos) y reintento automático si Gemini responde 429.
 - App: mensaje claro ante 429 y botón bloqueado mientras piensa.
 - (No aplicada al quedar un único usuario; disponible por si se reactiva.)
 
 ## v1.1 — Edición de perfil segura
-- La edición de perfiles sale del selector y pasa a estar **dentro de la cuenta**
-  (menú ⋮): así, un perfil con PIN solo lo edita quien entra con su PIN.
+- La edición de perfiles sale del selector y pasa a estar dentro de la cuenta
+  (menú ⋮): un perfil con PIN solo lo edita quien entra con su PIN.
 - Menú ⋮ con: Editar mi perfil · ¿Cómo funciona? · Cambiar de perfil.
 - Archivos: `app.js`, `styles.css`, `config.js`, `index.html`.
 
@@ -40,9 +46,9 @@ Netflix sobre Supabase.
 - Base de datos: nueva columna `usuarios.avatar`.
 
 ## v0.9 — Rediseño de recomendaciones + "Por ver"
-- Cada recomendación: botones **Guardar** y **No la he visto**, y estrellas
-  abajo para puntuar si ya la viste.
-- Cuarta pestaña **Por ver** (separada de Guardadas).
+- Cada recomendación: botones Guardar y No la he visto, y estrellas abajo para
+  puntuar si ya la viste.
+- Cuarta pestaña "Por ver" (separada de Guardadas).
 - Base de datos: nueva tabla `por_ver`.
 
 ## v0.8 — Puntuar opt-in (sustituida)
@@ -58,12 +64,12 @@ Netflix sobre Supabase.
   `swift-worker`, no `recomendar`).
 
 ## v0.5 — Recomendaciones con IA (Gemini)
-- Edge Function en Supabase que llama a Gemini (modelo flash) protegiendo la
-  clave en un secreto del servidor.
+- Edge Function en Supabase que llama a Gemini protegiendo la clave en un secreto
+  del servidor.
 - Pestañas: Descubrir · Mis pelis · Guardadas.
 - Las sugerencias de la IA se casan con TMDB para mostrar carátula y verificar
   que existen; se pueden puntuar o guardar.
-- Archivos nuevos: Edge Function `recomendar` (`index.ts`).
+- Archivo nuevo: Edge Function `recomendar` (`index.ts`).
 
 ## v0.4 — Catálogo TMDB
 - Buscar películas en TMDB y puntuarlas con estrellas; tarjetas con carátula.
@@ -89,7 +95,8 @@ Netflix sobre Supabase.
 ## Arquitectura (referencia rápida)
 - **Frontend:** PWA en GitHub Pages (HTML/CSS/JS, sin frameworks).
 - **Base de datos y backend:** Supabase (tablas + Edge Function `swift-worker`).
-- **Catálogo de cine:** TMDB (token v4).
+- **Catálogo de cine:** TMDB (token v4) — datos, carátulas y disponibilidad
+  (JustWatch).
 - **IA de recomendaciones:** Google Gemini (vía Edge Function, clave en secreto
   `GEMINI_API_KEY`).
 - **Tablas:** usuarios, peliculas, valoraciones, guardadas, por_ver, descartadas.
