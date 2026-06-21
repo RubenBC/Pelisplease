@@ -11,6 +11,18 @@ Netflix sobre Supabase.
 
 ---
 
+## Motor de recomendaciones — Tope inteligente + prompt mejorado (Edge Function)
+- Solo cambia la Edge Function `swift-worker` (frontend intacto, sigue en v1.6).
+- Tope inteligente: ya no se le mandan a Gemini todas las pelis puntuadas. Se
+  envían como mucho las 25 mejor valoradas (4-5★) como favoritas y hasta 10 de
+  las peores (1-2★) como "evita parecidas". Las de 3★ se omiten (señal tibia).
+- Prompt reescrito: pide buscar el "ADN" común de las favoritas (tono, temas,
+  ritmo, director, época), arriesgar con alguna joya menos obvia, no repetir
+  director/saga y dar un motivo personal (no genérico). El tema/filtros se
+  tratan como preferencia fuerte sin sacrificar el gusto de fondo.
+- Modelo fijado a `gemini-2.5-flash` (con nota para cambiar a `-lite` si hay 429).
+- Archivo: `recomendar.ts` (pegar en el index.ts de la función y redesplegar).
+
 ## v1.6 — Más datos en la ficha
 - La ficha ahora muestra también **dirección**, **reparto** (hasta 6 actores),
   **nota de TMDB** (★) y el **título original** si difiere del español.
